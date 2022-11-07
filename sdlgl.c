@@ -6,17 +6,19 @@
  #define SDL2_DEF 1
  #include <SDL2/SDL.h>
 #endif
+#ifndef USR_DEF
+ #include <string.h>
+ #include <stdint.h>
+#endif
 
-//Configuration variables are defined in header file, edit them there
+//Configuration variables are defined in header file, edit them there, ignore compiler warnings
 
 char catchSDLError(int functionreturn){
-//feed a negative literal to just print SDL error, else load with a function call to detect and print error
 	if(functionreturn<0){ SDL_Log("%s",SDL_GetError());}
 	if(SDL_GetError() == 0){return -1;}
 	return 0;
 }
 char catchGLError(){
-//if no gl error return 0 else clear and print all errors
 	GLenum error = glGetError();
 	if (error == GL_NO_ERROR){ return 0; }
 
@@ -26,7 +28,6 @@ char catchGLError(){
 }
 
 void sdlglInit(SDL_Window** window, SDL_GLContext** context)
-//initialises SDL window and GL context based on header definitions
 {
 	SDL_Init(SDL_INIT_VIDEO);
 
@@ -37,9 +38,19 @@ void sdlglInit(SDL_Window** window, SDL_GLContext** context)
 	*window 
 	  =SDL_CreateWindow(0,SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,SCREEN_WIDTH,SCREEN_HEIGHT,SDL_WINDOW_OPENGL);
 	*context = SDL_GL_CreateContext(*window);
-	SDL_GL_SetSwapInterval(1);
 	glewExperimental = GL_TRUE;
 	glewInit();
+
+	SDL_GL_SetSwapInterval(VSYNC);
+
+	#if(BLENDING)
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	#endif
+
+	#if(DEPTH)
+	glEnable(GL_DEPTH_TEST);
+	#endif
 
 	glClearColor(0.f,0.f,0.f,1.f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -47,58 +58,93 @@ void sdlglInit(SDL_Window** window, SDL_GLContext** context)
 }
 
 
-inline unsigned int shaderCompile(unsigned int type, const char* src)
+
+unsigned int sdlglShaderLoadnCompile(unsigned int shaderType, const char* srcfilepath)
 {
-	unsigned int shader = glCreateShader(type);
-	glShaderSource(shader,1,&src,0);
-	glCompileShader(shader);
+	FILE* f = fopen(srcfilepath, "a+");
+	fseek(f, 0, SEEK_END);
+	int l = ftell(f);
+	if(!l){SDL_Log("Shader file missing or empty");fclose(f);return 0;}
+	if(l>SHADERMAXCHARLENGTH){SDL_Log("Shader exceeds character limit(defined in sdlgl.h)");fclose(f);return 0;}
+	char shaderstring[l+1];
+	memset(shaderstring, 0, l+1);
+	fseek(f, 0, SEEK_SET);
+	fread(shaderstring, 1, l, f);
+	fclose(f);
 
-	int compiled = 0;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-	if(!compiled)
+	const char* shadersrc = shaderstring;
+	unsigned int shaderObject = glCreateShader(shaderType);
+	glShaderSource(shaderObject,1,&shadersrc,0);
+	glCompileShader(shaderObject);
+
+#ifdef DBG
+	glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &l);
+	if(!l)
 	{
-		int l = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &l);
-
+		glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &l);
 		char log[l];
-		glGetShaderInfoLog(shader, l, &l, &log[0]);
-		switch(type){
-			case GL_VERTEX_SHADER:
-				SDL_Log("couldnt compile vertex shader :");
-				break;
-			case GL_FRAGMENT_SHADER:
-				SDL_Log("couldnt compile fragment shader :");
-		}
-		SDL_Log("%s",log);
+		glGetShaderInfoLog(shaderObject, l, &l, &log[0]);
+		SDL_Log("Compilation failed - %s",log);
 		return 0;
 	}
-
-	return shader;
+#endif
+	return shaderObject;
 }
 
-unsigned int shaderCreate(const char* vsrc, const char* fsrc)
+char* sdlglShaderLoadSource(const char* srcfilepath)
+// Loads sourcefile into heap for hotreloading
 {
-	unsigned int sp = glCreateProgram();
-	unsigned int vs;
-	unsigned int fs;
-
-	if(vsrc){
-	vs = shaderCompile(GL_VERTEX_SHADER, vsrc);
-	glAttachShader(sp,vs);
-	}
-
-	if(fsrc){
-	fs = shaderCompile(GL_FRAGMENT_SHADER, fsrc);
-	glAttachShader(sp,fs);
-	}
-
-	glLinkProgram(sp);
-	glValidateProgram(sp);
-
-	glDetachShader(sp,vs);
-	glDeleteShader(vs);
-	glDetachShader(sp,fs);
-	glDeleteShader(fs);
-	return sp;
+	char* srcpointer = calloc(SHADERMAXCHARLENGTH, sizeof(char));
+	FILE* f = fopen(srcfilepath, "a+");
+	fseek(f, 0, SEEK_END);
+	int l = ftell(f);
+	if(!l){SDL_Log("Shader file missing or empty");fclose(f);return 0;}
+	if(l>SHADERMAXCHARLENGTH){SDL_Log("Shader exceeds character limit(defined in sdlgl.h)");fclose(f);return 0;}
+	memset(srcpointer, 0, l+1);
+	fseek(f, 0, SEEK_SET);
+	fread(srcpointer, 1, l, f);
+	fclose(f);
+	return srcpointer;
 }
+
+uint8_t sdlglShaderChecknReload(char** src,const char* srcfilepath,unsigned int* shaderObject, GLuint shaderType)
+// If sourcefile is changed it compiles and returns 1, 0 otherwise
+{
+	FILE* f = fopen(srcfilepath, "a+");
+	fseek(f, 0, SEEK_END);
+	int l = ftell(f);
+	if(!l){SDL_Log("Shader file missing or empty");fclose(f);return 0;}
+	if(l>SHADERMAXCHARLENGTH){SDL_Log("Shader exceeds character limit(defined in sdlgl.h)");fclose(f);return 0;}
+	char shaderstring[l+1];
+	memset(shaderstring, 0, l+1);
+	fseek(f, 0, SEEK_SET);
+	fread(shaderstring, 1, l+1, f);
+	fclose(f);
+	
+	if(strcmp(*src, shaderstring))
+	{
+		memset(*src, 0, SHADERMAXCHARLENGTH);
+		memcpy(*src, shaderstring, l+1);
+		glDeleteShader(*shaderObject);
+		*shaderObject = glCreateShader(shaderType);
+		glShaderSource(*shaderObject,1,(const char**)src,0);
+		glCompileShader(*shaderObject);
+
+		#ifdef DBG
+		glGetShaderiv(*shaderObject, GL_COMPILE_STATUS, &l);
+		if(!l)
+		{
+			glGetShaderiv(*shaderObject, GL_INFO_LOG_LENGTH, &l);
+			char log[l];
+			glGetShaderInfoLog(*shaderObject, l, &l, &log[0]);
+			SDL_Log("Compilation failed - %s",log);
+			return 0;
+		}
+		#endif
+
+		return 1;
+	}
+	return 0;
+}
+
 
