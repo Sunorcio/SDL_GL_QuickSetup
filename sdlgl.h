@@ -5,8 +5,8 @@
 //             ||
 //             \/
 
-#define	wWIDTH 2560
-#define wHEIGHT 1440
+#define	wWIDTH 1024
+#define wHEIGHT 768
 #define VSYNC 1 // 1^0
 #define BLENDING 0 // 1^0
 #define DEPTH 0 // 1^0
@@ -47,7 +47,7 @@
 					 x; \
 					 if(catchGLError()){SDL_Log("line : %d, function : %s",__LINE__,__FUNCTION__);}
 #else
- #define _sdlgldbg(x)
+ #define _sdlgldbg(x) x;
 #endif
 
 #include "sdlgl.c"
