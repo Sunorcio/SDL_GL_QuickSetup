@@ -1,8 +1,12 @@
-#ifdef lspgarbage 
-#include <cstdlib>
-#include <SDL2/SDL_log.h>
+#if(0) // lspgarbage
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
-#include "sdlgl.h"
+#include <SDL2/SDL_log.h>
+#include <SDL2/SDL_thread.h>
+#include <SDL2/SDL_rwops.h>
 #endif // ignore
 
 
@@ -14,7 +18,7 @@
  #define SDL2_DEF 1
  #include <SDL2/SDL.h>
 #endif
-#ifndef USR_DEF
+#ifndef STD_DEF
  #include <string.h>
  #include <stdint.h>
 #endif
@@ -159,6 +163,9 @@ static unsigned char sdlglShaderSourceCompare(char** loadedsrc,const char* srcfi
 }
 
 
+
+
+/*
 typedef struct
 {	
 	unsigned int id;
@@ -183,7 +190,7 @@ static void sdlglDestroyProgram(SDLGLprogram* program)
 	glDeleteProgram(program->id);
 	free(program);
 }
-
+*/
 
 
 
