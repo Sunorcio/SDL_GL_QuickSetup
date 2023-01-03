@@ -11,6 +11,8 @@
 #define BLENDING 0 // 1^0
 #define DEPTH 0 // 1^0
 #define STENCIL 0 // 1^0
+#define DITHERING 0 // 1^0
+#define ANTIALIASING 0 // 1^0
 #define SHADERCHARMAX 10000
 // #define SHADEROBJMAX 5 // Max shaders in SDLGLprogram
 #define MAJOR_VERSION 4

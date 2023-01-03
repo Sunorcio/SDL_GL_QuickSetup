@@ -64,6 +64,14 @@ static void sdlglInit()
 
 	SDL_GL_SetSwapInterval(VSYNC);
 
+	#if(!DITHERING)
+	glDisable(GL_DITHER);
+	#endif
+
+	#if(!ANTIALIASING)
+	glDisable(GL_MULTISAMPLE);
+	#endif
+
 	#if(BLENDING)
 	glEnable(GL_BLEND);
 	glBlendEquation(GL_FUNC_ADD);

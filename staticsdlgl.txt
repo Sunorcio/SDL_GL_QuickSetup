@@ -1,0 +1,9 @@
+Linux
+
+clang gltest.c -o gltest -I/usr/local/include/SDL2 -D_REENTRANT -L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,--enable-new-dtags -Wl,-Bstatic -lSDL2 -lGLEW -lGLU -Wl,-Bdynamic -lGL -lm -ldl -lpthread -lrt
+
+
+windows
+
+x86_64-w64-mingw32-gcc gltest.c -I/usr/local/x86_64-w64-mingw32/include -L/usr/local/x86_64-w64-mingw32/lib -Wl,-Bstatic -lmingw32 -lSDL2main -lSDL2 -mwindows -lm -ldinput8 -ldxguid -ldxerr8 -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lversion -lsetupapi -lcfgmgr32 -luuid -static-libgcc
+
